@@ -66,6 +66,13 @@ a{color:var(--acc2)}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222833;border:1px solid var(--line);padding:10px 16px;border-radius:20px;z-index:30;font-size:14px}
 .day7{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px}
 .day7 div{background:var(--card2);border-radius:8px;padding:6px 0}.day7 .today{outline:2px solid var(--acc)}
+.ph{width:100%;border-radius:12px;background:var(--card2);display:block;aspect-ratio:3/4;object-fit:cover}
+.thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}.thumbs div{position:relative}.thumbs img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;background:var(--card2);display:block}
+.thumbs span{position:absolute;left:4px;bottom:3px;font-size:10px;background:rgba(0,0,0,.6);border-radius:4px;padding:0 4px}
+.chkthumb{width:34px;height:44px;object-fit:cover;border-radius:6px;flex:0 0 34px}
+.meal{background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:8px}.meal.eaten{opacity:.55}
+.meal ul{margin:6px 0;padding-left:18px;font-size:14px;color:#cfd3dc}
+.seg{display:flex;background:var(--card2);border-radius:10px;padding:3px;gap:3px}.seg button{flex:1;border:0;background:none;color:var(--mut);padding:8px;border-radius:8px;font-weight:600;font-size:14px}.seg button.on{background:var(--acc);color:#1a0d00}
 .day7 .dot{display:block;width:8px;height:8px;border-radius:50%;margin:4px auto 0;background:var(--line)}.day7 .dot.y{background:var(--ok)}
 </style>
 </head>
@@ -89,7 +96,7 @@ const DAYS = ["Hétfő","Kedd","Szerda","Csütörtök","Péntek","Szombat","Vas�
 const DEFAULT = {
   profile:{name:"Bálint",height:180,age:20,startWeight:72,goalWeight:80,activity:1.6,rate:0.35,kcalAdjust:0,lastAdjust:null,startDate:null},
   split:["Push","Pull","Láb","Push","Pull","Láb","Aktív pihenő"],
-  weights:{}, meals:{}, workouts:{}, checks:{}, water:{}, sleep:{}, measures:[], myFoods:[], custom:{}
+  weights:{}, meals:{}, workouts:{}, checks:{}, water:{}, sleep:{}, measures:[], myFoods:[], custom:{}, photos:[], plan:null
 };
 const TEMPLATES = {
   "Push":[["Fekvenyomás",4,"6–8"],["Ferde kézisúlyzós nyomás",3,"8–10"],["Vállból nyomás",3,"8–10"],["Oldalemelés",3,"12–15"],["Tricepsz letolás kábelen",3,"10–12"],["Fej fölötti tricepsz",2,"12–15"]],
@@ -109,8 +116,31 @@ const FOODS = [
   ["Banán",89,1.1,23,0.3,120,"db",1],["Alma",52,0.3,14,0.2,180,"db",1],["Teljes kiőrlésű kenyér",247,13,41,3.4,80,"g"],
   ["Krumpli (főtt)",87,1.9,20,0.1,300,"g"],["Marhahús (sovány, sült)",217,26,0,12,150,"g"],["Lazac",208,20,0,13,150,"g"],
   ["Tonhal konzerv (lében)",116,26,0,1,120,"g"],["Trappista sajt",340,25,0,27,40,"g"],["Mogyoróvaj",588,25,20,50,30,"g"],
-  ["Olívaolaj",884,0,0,100,10,"ml"],["Dió / mandula",620,18,13,55,30,"g"]
+  ["Olívaolaj",884,0,0,100,10,"ml"],["Dió / mandula",620,18,13,55,30,"g"],["Vegyes zöldség",30,2,5,0.3,200,"g"]
 ];
+const FOOD = Object.fromEntries(FOODS.map(f=>[f[0],f]));
+// Étrendterv: étkezés-sablonok [név, [[étel, g/ml], ...]]
+const MEALS = {
+  reggeli:[["Zabkása banánnal",[["Zabpehely",90],["Tej 2,8%",300],["Banán",120],["Mogyoróvaj",20]]],
+    ["Tojásos reggeli",[["Tojás",180],["Teljes kiőrlésű kenyér",100],["Trappista sajt",30],["Vegyes zöldség",100]]],
+    ["Túrós zabtál",[["Túró (félzsíros)",150],["Zabpehely",70],["Banán",120],["Dió / mandula",15]]]],
+  tizorai:[["Joghurt dióval és almával",[["Görög joghurt",200],["Dió / mandula",30],["Alma",180]]],
+    ["Tonhalas szendvics",[["Teljes kiőrlésű kenyér",120],["Tonhal konzerv (lében)",80],["Vegyes zöldség",100]]],
+    ["Mogyoróvajas kenyér + tej",[["Teljes kiőrlésű kenyér",80],["Mogyoróvaj",25],["Tej 2,8%",300]]]],
+  ebed:[["Csirkemell rizzsel",[["Csirkemell (sült)",140],["Rizs (főtt)",350],["Olívaolaj",10],["Vegyes zöldség",200]]],
+    ["Marhahús krumplival",[["Marhahús (sovány, sült)",130],["Krumpli (főtt)",450],["Olívaolaj",10],["Vegyes zöldség",200]]],
+    ["Lazac rizzsel",[["Lazac",140],["Rizs (főtt)",330],["Vegyes zöldség",200]]],
+    ["Csirkés tészta sajttal",[["Csirkemell (sült)",120],["Tészta (főtt)",330],["Trappista sajt",30],["Vegyes zöldség",150]]]],
+  uzsonna:[["Banános mogyoróvajas kenyér",[["Teljes kiőrlésű kenyér",80],["Mogyoróvaj",20],["Banán",120]]],
+    ["Tömegelő shake",[["Tej 2,8%",400],["Zabpehely",70],["Banán",120],["Mogyoróvaj",25],["Fehérjepor (adag)",20]]],
+    ["Joghurt zabbal és almával",[["Görög joghurt",200],["Zabpehely",50],["Alma",180]]]],
+  vacsora:[["Tonhalas tészta",[["Tészta (főtt)",320],["Tonhal konzerv (lében)",90],["Olívaolaj",10],["Vegyes zöldség",150]]],
+    ["Rántotta kenyérrel",[["Tojás",180],["Teljes kiőrlésű kenyér",120],["Vegyes zöldség",150]]],
+    ["Csirke krumplival",[["Csirkemell (sült)",130],["Krumpli (főtt)",400],["Olívaolaj",10],["Vegyes zöldség",150]]],
+    ["Marha rizzsel",[["Marhahús (sovány, sült)",120],["Rizs (főtt)",300],["Vegyes zöldség",150]]]],
+  esti:[["Túró lefekvés előtt",[["Túró (félzsíros)",200],["Dió / mandula",15]]],["Görög joghurt dióval",[["Görög joghurt",200],["Dió / mandula",20]]]]
+};
+const SLOTS=[["reggeli","Reggeli","7:00"],["tizorai","Tízórai","10:00"],["ebed","Ebéd","13:00"],["uzsonna","Uzsonna / edzés előtt","16:30"],["vacsora","Vacsora","19:30"],["esti","Esti","22:00"]];
 const TIPS = [
   "A reggeli mérés a legpontosabb: ébredés után, WC után, evés előtt. Egy nap nem számít, a heti átlag igen.",
   "Fehérjét oszd el 4–5 étkezésre, étkezésenként kb. 0,4 g/kg (nálad ~30 g). Így jobb az izomépítés.",
@@ -169,7 +199,7 @@ function targets(){
   const kcal=Math.round((tdee+surplus+p.kcalAdjust)/10)*10;
   const prot=Math.round(w*2.0), fat=Math.round(w*1.0);
   const carb=Math.max(0,Math.round((kcal-prot*4-fat*9)/4));
-  return {kcal,prot,fat,carb,tdee:r0(tdee),surplus:r0(surplus),water:Math.round(w*0.04*10)/10,targetRate:r1(p.rate/100*w*100)/100};
+  return {kcal,prot,fat,carb,tdee:r0(tdee),surplus:r0(surplus),water:Math.round(w*0.04*10)/10,targetRate:Math.round(p.rate/100*w*100)/100};
 }
 function dayTotals(d){ const m=S.meals[d]||[]; return m.reduce((a,x)=>({kcal:a.kcal+x.kcal,p:a.p+x.p,c:a.c+x.c,f:a.f+x.f}),{kcal:0,p:0,c:0,f:0}); }
 function dayType(d){ return S.custom[d] || S.split[dow(d)]; }
@@ -189,10 +219,116 @@ function adaptive(){
 function streak(){ let n=0,d=today(); if(!(S.workouts[d]||[]).some(e=>e.sets.some(s=>s.done))&&!(S.meals[d]||[]).length) d=addDays(d,-1);
   while(((S.meals[d]||[]).length||(S.workouts[d]||[]).some(e=>e.sets.some(s=>s.done))||S.weights[d])){ n++; d=addDays(d,-1);} return n; }
 
+// ---------- Étrendterv ----------
+function weekStart(d){ return addDays(d,-dow(d)); }
+function rng(seed){ let a=seed>>>0; return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function hash(s){ let h=2166136261; for(const c of s){ h^=c.charCodeAt(0); h=Math.imul(h,16777619);} return h>>>0; }
+function newPlan(seed){
+  const week=weekStart(today()), R=rng(hash(week)+(seed||0));
+  const off=Object.fromEntries(SLOTS.map(([k])=>[k,Math.floor(R()*MEALS[k].length)]));
+  S.plan={week,seed:seed||0,picks:[...Array(7)].map((_,d)=>Object.fromEntries(SLOTS.map(([k])=>[k,(off[k]+d)%MEALS[k].length])))};
+  save();
+}
+function getPlan(){ if(!S.plan||S.plan.week!==weekStart(today())) newPlan(0); return S.plan; }
+function nutr(items){ return items.reduce((a,[n,g])=>{ const f=FOOD[n]; if(!f) return a; const k=g/100; return {kcal:a.kcal+f[1]*k,p:a.p+f[2]*k,c:a.c+f[3]*k,f:a.f+f[4]*k}; },{kcal:0,p:0,c:0,f:0}); }
+function planDay(di){
+  const pk=getPlan().picks[di], t=targets();
+  const raw=SLOTS.map(([k,l,tm])=>{ const [title,items]=MEALS[k][pk[k]]; return {k,l,tm,title,items}; });
+  const base=raw.reduce((a,m)=>a+nutr(m.items).kcal,0);
+  const fct=Math.min(1.7,Math.max(0.6,t.kcal/base));
+  return raw.map(m=>{ const items=m.items.map(([n,g])=>{ const f=FOOD[n]; if(f[7]){ const c=Math.max(1,Math.round(g*fct/f[5])); return [n,c*f[5]]; } const step=n==="Olívaolaj"?5:10; return [n,Math.max(step,Math.round(g*fct/step)*step)]; }); return {...m,items,n:nutr(items)}; });
+}
+function fmtItem([n,g]){ const f=FOOD[n]; if(f[7]) return `${Math.round(g/f[5])} db ${n.toLowerCase()}`; if(n==="Fehérjepor (adag)") return `${g} g fehérjepor (${r1(g/30)} adag)`; return `${g} ${f[6]} ${n.toLowerCase()}`; }
+function planKey(di,k){ return `${getPlan().week}|${di}|${k}`; }
+function eatenKeys(d){ return new Set((S.meals[d]||[]).map(m=>m.plan).filter(Boolean)); }
+function eatPlanned(di,k){
+  const d=addDays(getPlan().week,di); if(d>today()) return toast("Ez a nap még nem jött el");
+  const m=planDay(di).find(x=>x.k===k), key=planKey(di,k);
+  if(eatenKeys(d).has(key)){ S.meals[d]=S.meals[d].filter(x=>x.plan!==key); save(); render(); return toast("Visszavonva"); }
+  const x={name:m.title,kcal:m.n.kcal,p:m.n.p,c:m.n.c,f:m.n.f,plan:key,time:d===today()?new Date().toLocaleTimeString("hu-HU",{hour:"2-digit",minute:"2-digit"}):""};
+  (S.meals[d]=S.meals[d]||[]).push(x); save(); render(); toast(`+${r0(x.kcal)} kcal`);
+}
+function swapMeal(di,k){ const p=getPlan(); p.picks[di][k]=(p.picks[di][k]+1)%MEALS[k].length; save(); render(); }
+function shopping(){
+  const sum={}; for(let i=0;i<7;i++) for(const m of planDay(i)) for(const [n,g] of m.items) sum[n]=(sum[n]||0)+g;
+  // nyers / bolti mennyiség becslés a főtt súlyból
+  const RAW={"Rizs (főtt)":["rizs (nyers)",0.37],"Tészta (főtt)":["tészta (nyers)",0.45],"Csirkemell (sült)":["csirkemell (nyers)",1.33],"Marhahús (sovány, sült)":["sovány marhahús (nyers)",1.35],"Krumpli (főtt)":["krumpli",1.05],"Lazac":["lazac (nyers)",1.2]};
+  return Object.entries(sum).map(([n,g])=>{ const f=FOOD[n]; let name=n.toLowerCase(), q=g, u=f[6];
+    if(RAW[n]){ name=RAW[n][0]; q=g*RAW[n][1]; }
+    if(f[7]) return [name,`${Math.round(g/f[5])} db`];
+    if(n==="Tojás") return [name,`${Math.round(g/60)} db`];
+    if(n==="Tonhal konzerv (lében)") return ["tonhalkonzerv",`${Math.ceil(g/120)} doboz`];
+    if(n==="Tej 2,8%") return ["tej",`${r1(q/1000)} l`];
+    return [name, q>=1000?`${r1(q/1000)} kg`:`${Math.round(q/10)*10} ${u}`]; }).sort((a,b)=>a[0]<b[0]?-1:1);
+}
+
+// ---------- Fotók (IndexedDB) ----------
+let dbp; const photoCache={};
+function idb(){ return dbp||(dbp=new Promise((res,rej)=>{ const r=indexedDB.open("tomegeles",1); r.onupgradeneeded=()=>r.result.createObjectStore("photos"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+async function pTx(mode,fn){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction("photos",mode), st=tx.objectStore("photos"); const rq=fn(st); tx.oncomplete=()=>res(rq?.result); tx.onerror=()=>rej(tx.error); }); }
+const pGet=k=>pTx("readonly",s=>s.get(k)), pPut=(k,v)=>pTx("readwrite",s=>s.put(v,k)), pDel=k=>pTx("readwrite",s=>s.delete(k));
+async function fillPhotos(){ for(const img of document.querySelectorAll("img[data-ph]")){ const k=img.dataset.ph; try{ if(!photoCache[k]) photoCache[k]=await pGet(k); if(photoCache[k]) img.src=photoCache[k]; }catch(e){} } }
+function compress(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{ const s=Math.min(1,900/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s); c.getContext("2d").drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c.toDataURL("image/jpeg",0.8)); }; im.onerror=rej; im.src=u; }); }
+function takePhoto(){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; try{ const d=today(), url=await compress(f); await pPut(d,url); photoCache[d]=url; if(!S.photos.includes(d)) S.photos.push(d); S.photos.sort(); save(); navigator.storage?.persist?.(); render(); toast("Fotó elmentve 📸"); }catch(e){ toast("Nem sikerült menteni a fotót"); } };
+  inp.click();
+}
+function viewPhoto(d){
+  const earlier=S.photos.filter(x=>x<=addDays(d,-28)).pop()||(S.photos[0]!==d?S.photos[0]:null);
+  modal(`<div class="row sp"><h3 style="margin:0">${fmtDate(d)}</h3><button class="x" onclick="closeModal()">✕</button></div>
+  <div class="${earlier?"grid2":""}" style="margin-top:10px">${earlier?`<div><img data-ph="${earlier}" class="ph"><div class="sm mut" style="text-align:center">${fmtDate(earlier)}</div></div>`:""}<div><img data-ph="${d}" class="ph"><div class="sm mut" style="text-align:center">${fmtDate(d)}</div></div></div>
+  <div class="row" style="margin-top:12px"><button class="btn g" onclick="delPhoto('${d}')">🗑 Fotó törlése</button></div>`);
+  fillPhotos();
+}
+async function delPhoto(d){ if(!confirmInline()) return; await pDel(d); delete photoCache[d]; S.photos=S.photos.filter(x=>x!==d); save(); closeModal(); render(); }
+
+// ---------- Heti összefoglaló ----------
+function weekSummary(mon){
+  const days=[...Array(7)].map((_,i)=>addDays(mon,i)).filter(x=>x<=today()), t=targets();
+  const wAvg=ds=>{ const v=ds.map(x=>S.weights[x]).filter(Boolean); return v.length?v.reduce((a,b)=>a+b)/v.length:null; };
+  const wNow=wAvg(days), wPrev=wAvg([...Array(7)].map((_,i)=>addDays(mon,i-7)));
+  const tots=days.filter(x=>(S.meals[x]||[]).length).map(dayTotals);
+  const avgK=tots.length?tots.reduce((a,x)=>a+x.kcal,0)/tots.length:null, avgP=tots.length?tots.reduce((a,x)=>a+x.p,0)/tots.length:null;
+  const hitK=tots.filter(x=>x.kcal>=t.kcal*0.9).length, hitP=tots.filter(x=>x.p>=t.prot*0.9).length;
+  const wds=days.filter(x=>(S.workouts[x]||[]).some(e=>e.sets.some(s=>s.done)));
+  let sets=0,vol=0; const wb={};
+  for(const x of wds) for(const e of S.workouts[x]) for(const s of e.sets) if(s.done){ sets++; vol+=(s.w||0)*(s.r||0); if(s.w&&s.r) wb[e.name]=Math.max(wb[e.name]||0,e1rm(s.w,s.r)); }
+  const prs=Object.entries(wb).filter(([n,v])=>{ const b=bestE1rm(n,mon); return b&&v>b+0.01; }).map(([n,v])=>[n,r0(v)]);
+  const photos=days.filter(x=>S.photos.includes(x)).length;
+  const change=wNow&&wPrev?wNow-wPrev:null, adv=[];
+  if(change===null) adv.push(["info","⚖️ Mérj minden reggel. Két teljes hét után itt látod a heti súlyváltozást."]);
+  else if(change<t.targetRate*0.5){ if(avgK&&avgK<t.kcal*0.95) adv.push(["warn",`📉 Kevés gyarapodás (${change>=0?"+":""}${r1(change)} kg), és átlagban ${r0(t.kcal-avgK)} kcal-val a cél alatt maradtál. Jövő héten a feladat: minden nap legyen meg a cél. Kövesd az étrendtervet.`]); else adv.push(["warn",`📉 Megvolt a kalória, mégis csak ${change>=0?"+":""}${r1(change)} kg lett. Emeld a napi célt +150 kcal-val (⚙️ → Kalória igazítás).`]); }
+  else if(change>t.targetRate*1.7) adv.push(["warn",`📈 Gyors gyarapodás (+${r1(change)} kg). Ennek egy része zsír, vegyél vissza 150 kcal-t.`]);
+  else adv.push(["good",`✅ Jó tempó: +${r1(change)} kg a múlt héthez képest (cél ~+${t.targetRate}).`]);
+  if(tots.length&&hitP<tots.length*0.7) adv.push(["warn",`🥩 Csak ${hitP} napon volt meg a fehérjecél. Tegyél be egy túrót vagy shake-et minden napra.`]);
+  if(tots.length<days.length-1) adv.push(["info",`📝 ${days.length} napból ${tots.length} napon vezetted a kaját. Pontosabb a kép, ha minden nap beírod.`]);
+  if(wds.length>=7) adv.push(["warn","😮‍💨 7/7 edzésnap. Ha esnek a súlyok vagy rosszul alszol, jövő héten legyen 1–2 könnyű nap."]);
+  else if(wds.length<3&&days.length>=5) adv.push(["warn",`🏋️ Csak ${wds.length} edzés volt. A cél heti 5–6.`]);
+  if(prs.length) adv.push(["good",`🏆 ${prs.length} új csúcs: ${prs.map(p=>p[0]).join(", ")}.`]);
+  return {days,wNow,change,avgK,avgP,hitK,hitP,fed:tots.length,wds:wds.length,sets,vol,prs,photos,adv,t};
+}
+function summaryHTML(mon,compact){
+  const s=weekSummary(mon), end=addDays(mon,6), live=end>=today();
+  const head=`<div class="sm mut">${fmtDate(mon)} – ${fmtDate(end)}${live?" · folyamatban":""}</div>`;
+  const stats=`<div class="grid3" style="margin-top:8px">
+    <div class="stat"><div class="v ${s.change===null?"":s.change>=0?"ok":"bad"}">${s.change===null?"–":(s.change>=0?"+":"")+r1(s.change)}</div><div class="l">kg a múlt héthez</div></div>
+    <div class="stat"><div class="v">${s.avgK?r0(s.avgK):"–"}</div><div class="l">átl. kcal (cél ${s.t.kcal})</div></div>
+    <div class="stat"><div class="v">${s.wds}</div><div class="l">edzés · ${s.sets} szett</div></div></div>`;
+  if(compact) return head+stats+(s.adv[0]?`<div class="note ${s.adv[0][0]}">${s.adv[0][1]}</div>`:"");
+  return head+stats+`<div class="grid3" style="margin-top:8px">
+    <div class="stat"><div class="v">${s.avgP?r0(s.avgP):"–"} g</div><div class="l">átl. fehérje</div></div>
+    <div class="stat"><div class="v">${s.hitK}/${s.fed}</div><div class="l">nap kalóriacél</div></div>
+    <div class="stat"><div class="v">${s.photos}</div><div class="l">fotó</div></div></div>
+    ${s.vol?`<div class="sm mut" style="margin-top:8px">Heti megmozgatott tömeg: <b class="acc">${r0(s.vol).toLocaleString("hu-HU")} kg</b>${s.wNow?` · átlagsúly ${r1(s.wNow)} kg`:""}</div>`:""}
+    ${s.prs.length?`<div style="margin-top:8px">${s.prs.map(([n,v])=>`<span class="pr">PR</span> ${esc(n)} ~${v} kg`).join("<br>")}</div>`:""}
+    ${s.adv.map(a=>`<div class="note ${a[0]}">${a[1]}</div>`).join("")}`;
+}
+
 // ---------- Nézetek ----------
 let view="ma", wDate=today();
 function go(v){ view=v; document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v)); render(); scrollTo(0,0); }
-function render(){ ({ma:vMa,kaja:vKaja,edzes:vEdzes,suly:vSuly,tudas:vTudas})[view](); }
+function render(){ ({ma:vMa,kaja:vKaja,edzes:vEdzes,suly:vSuly,tudas:vTudas})[view](); fillPhotos(); }
 
 function vMa(){
   const d=today(), t=targets(), tot=dayTotals(d), type=dayType(d), h=new Date().getHours(), p=S.profile;
@@ -232,8 +368,11 @@ function vMa(){
   </div>
   <div class="card"><h2>Mai teendők</h2>
     <label class="chk"><input type="checkbox" ${S.weights[d]?"checked":""} onclick="return quickWeight(event)"><span>Reggeli mérés ${S.weights[d]?`<b>${S.weights[d]} kg</b>`:""}</span></label>
+    <label class="chk"><input type="checkbox" ${S.photos.includes(d)?"checked":""} onclick="event.preventDefault();${S.photos.includes(d)?`viewPhoto('${d}')`:"takePhoto()"}"><span>Napi fotó 📸 <span class="sm mut">${S.photos.includes(d)?"kész – koppints a megnézéshez":"ugyanott, ugyanabban a fényben"}</span></span>${S.photos.includes(d)?`<img class="chkthumb" data-ph="${d}">`:""}</label>
     ${items.map(([k,l])=>`<label class="chk"><input type="checkbox" ${chk[k]?"checked":""} onchange="toggleChk('${k}',this.checked)"><span>${l}</span></label>`).join("")}
   </div>
+  ${(()=>{ const di=dow(d), eaten=eatenKeys(d), pl=planDay(di); return `<div class="card"><div class="row sp"><h2 style="margin:0">Mai étrend</h2><button class="btn g sm" onclick="kMode='terv';kDay=${di};go('kaja')">Részletek ›</button></div><div class="list" style="margin-top:6px">${pl.map(m=>{ const e=eaten.has(planKey(di,m.k)); return `<div class="it"><div><div class="sm mut">${m.tm} · ${m.l}</div><div style="${e?"text-decoration:line-through;opacity:.6":""}">${esc(m.title)}</div></div><div class="row" style="flex:0 0 auto;gap:6px"><span class="sm">${r0(m.n.kcal)} kcal</span><button class="done ${e?"on":""}" onclick="eatPlanned(${di},'${m.k}')">✓</button></div></div>`}).join("")}</div></div>`; })()}
+  ${dow(d)>=5||dow(d)===0?`<div class="card"><div class="row sp"><h2 style="margin:0">${dow(d)===0?"Múlt heti összefoglaló":"Heti összefoglaló"}</h2><button class="btn g sm" onclick="sumWeek=null;go('suly')">Teljes ›</button></div>${summaryHTML(dow(d)===0?addDays(weekStart(d),-7):weekStart(d),true)}</div>`:""}
   ${notes.length||consec>=6?`<div class="card"><h2>Visszajelzés</h2>${notes.map(n=>`<div class="note ${n[0]}">${n[1]}</div>`).join("")}${consec>=6?`<div class="note warn">😮‍💨 ${consec} napja edzel egyhuzamban. Ha fáradt vagy, ízületed fáj, vagy esnek a súlyok, a mai nap legyen könnyű.</div>`:""}</div>`:""}
   <div class="card"><h2>Napi tipp</h2><div class="tip">${tip}</div></div>
   <div class="card"><h2>Ez a hét</h2><div class="day7">${last7.map(x=>{const wd=(S.workouts[x]||[]).some(e=>e.sets.some(s=>s.done)); return `<div class="${x===d?"today":""}">${DAYS[dow(x)].slice(0,2)}<br><span class="mut">${esc(dayType(x)).slice(0,5)}</span><span class="dot ${wd?"y":""}"></span></div>`}).join("")}</div></div>`;
@@ -250,10 +389,26 @@ function askWeight(d){
 }
 
 // ---- Kaja ----
-let kDate=today();
+let kDate=today(), kMode="naplo", kDay=dow(today());
+const segHTML=()=>`<div class="seg" style="margin-bottom:12px"><button class="${kMode==="naplo"?"on":""}" onclick="kMode='naplo';render()">📝 Napló</button><button class="${kMode==="terv"?"on":""}" onclick="kMode='terv';render()">📅 Heti étrend</button></div>`;
+function vTerv(){
+  const p=getPlan(), di=kDay, d=addDays(p.week,di), pl=planDay(di), t=targets(), eaten=eatenKeys(d);
+  const tot=pl.reduce((a,m)=>({kcal:a.kcal+m.n.kcal,p:a.p+m.n.p}),{kcal:0,p:0});
+  $("#app").innerHTML=segHTML()+`
+  <div class="card"><div class="chips" style="justify-content:space-between">${DAYS.map((n,i)=>`<button class="chip ${i===di?"on":""}" onclick="kDay=${i};render()">${n.slice(0,2)}</button>`).join("")}</div>
+    <div class="row sp" style="margin-top:10px"><b>${DAYS[di]}, ${fmtDate(d)}</b><span class="sm">${r0(tot.kcal)} kcal · ${r0(tot.p)} g fehérje</span></div>
+    <div class="sm mut">Cél: ${t.kcal} kcal, legalább ${t.prot} g fehérje · ${esc(dayType(d))}nap. Az adagok a kalóriacélodhoz vannak méretezve.</div></div>
+  ${pl.map(m=>{ const e=eaten.has(planKey(di,m.k)); return `<div class="meal ${e?"eaten":""}"><div class="row sp"><div><span class="sm mut">${m.tm} · ${m.l}</span><br><b>${esc(m.title)}</b></div><span class="sm" style="text-align:right">${r0(m.n.kcal)} kcal<br><span class="mut">${r0(m.n.p)} g fehérje</span></span></div>
+    <ul>${m.items.map(i=>`<li>${esc(fmtItem(i))}</li>`).join("")}</ul>
+    <div class="row"><button class="btn ${e?"g":""} sm" onclick="eatPlanned(${di},'${m.k}')">${e?"↩︎ Visszavon":"✓ Megettem"}</button><button class="btn g sm" onclick="swapMeal(${di},'${m.k}')">🔄 Másikat</button></div></div>`}).join("")}
+  <div class="card"><h2>🛒 Bevásárlólista – egész hét</h2><div class="list">${shopping().map(([n,q])=>`<label class="chk"><input type="checkbox"><span>${esc(n)}</span><b class="sm">${q}</b></label>`).join("")}</div>
+    <div class="sm mut" style="margin-top:6px">A főtt rizs, tészta és sült hús nyers súlyra van átszámolva. Fűszer, só, ízesítés tetszés szerint.</div></div>
+  <div class="card"><button class="btn g" onclick="newPlan((getPlan().seed||0)+1);render();toast('Új heti étrend kész')">🎲 Teljesen új heti étrend</button></div>`;
+}
 function vKaja(){
+  if(kMode==="terv") return vTerv();
   const d=kDate, t=targets(), tot=dayTotals(d), m=S.meals[d]||[];
-  $("#app").innerHTML=`
+  $("#app").innerHTML=segHTML()+`
   <div class="card"><div class="row sp"><button class="btn g sm" onclick="kDate=addDays(kDate,-1);render()">‹</button><b style="text-align:center">${d===today()?"Ma":fmtDate(d)}</b><button class="btn g sm" onclick="kDate=addDays(kDate,1);render()" ${d>=today()?"disabled":""}>›</button></div></div>
   <div class="card"><div class="grid2">
     <div class="stat"><div class="v">${r0(tot.kcal)}</div><div class="l">/ ${t.kcal} kcal</div><div class="bar"><i style="width:${Math.min(100,tot.kcal/t.kcal*100)}%"></i></div></div>
@@ -342,13 +497,21 @@ function addEx(){ const n=$("#newEx").value.trim(); if(!n) return; const h=exHis
 let tInt=null; function timer(sec){ clearInterval(tInt); let end=Date.now()+sec*1000; const tick=()=>{ const el=$("#tmr"); const left=Math.max(0,Math.round((end-Date.now())/1000)); if(el) el.textContent=left?`⏱ ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`:"Mehet a következő szett! 💥"; if(!left){ clearInterval(tInt); navigator.vibrate?.([200,100,200]); } }; tick(); tInt=setInterval(tick,1000); }
 
 // ---- Fejlődés ----
+let sumWeek=null;
 function vSuly(){
   const w=sortedWeights(), p=S.profile, t=targets(), rate=weeklyRate(), cur=avgWeight(today())||currentWeight();
   const gained=cur-p.startWeight, left=p.goalWeight-cur;
   const eta=rate&&rate>0.02&&left>0?Math.round(left/rate):null;
   const lifts=["Fekvenyomás","Guggolás","Román felhúzás","Vállból nyomás","Döntött törzsű evezés"].map(n=>[n,bestE1rm(n)]).filter(x=>x[1]);
   const ms=S.measures.slice().sort((a,b)=>a.date<b.date?-1:1), m0=ms[0], m1=ms[ms.length-1];
+  if(!sumWeek) sumWeek=dow(today())===0?addDays(weekStart(today()),-7):weekStart(today());
+  const ph=S.photos, first=ph[0], last=ph[ph.length-1];
   $("#app").innerHTML=`
+  <div class="card"><div class="row sp"><button class="btn g sm" onclick="sumWeek=addDays(sumWeek,-7);render()">‹</button><h2 style="margin:0;text-align:center">Heti összefoglaló</h2><button class="btn g sm" onclick="sumWeek=addDays(sumWeek,7);render()" ${addDays(sumWeek,7)>today()?"disabled":""}>›</button></div>
+    ${summaryHTML(sumWeek,false)}</div>
+  <div class="card"><div class="row sp"><h2 style="margin:0">Fotók</h2><button class="btn sm" onclick="takePhoto()">📸 ${ph.includes(today())?"Mai csere":"Mai fotó"}</button></div>
+    ${ph.length>=2?`<div class="grid2" style="margin-top:10px"><div onclick="viewPhoto('${first}')"><img class="ph" data-ph="${first}"><div class="sm mut" style="text-align:center">Kezdés · ${fmtDate(first)}</div></div><div onclick="viewPhoto('${last}')"><img class="ph" data-ph="${last}"><div class="sm mut" style="text-align:center">Legutóbbi · ${fmtDate(last)}</div></div></div>`:""}
+    ${ph.length?`<div class="thumbs">${ph.slice().reverse().slice(0,24).map(x=>`<div onclick="viewPhoto('${x}')"><img data-ph="${x}"><span>${fmtDate(x)}</span></div>`).join("")}</div>`:`<div class="sm mut" style="margin-top:8px">Minden reggel egy fotó, ugyanott, ugyanabban a fényben és pózban. A fotók csak ezen a telefonon vannak, sehova nem töltődnek fel.</div>`}</div>
   <div class="card"><div class="row sp"><h2 style="margin:0">Testsúly</h2><button class="btn sm" style="flex:0 0 auto" onclick="askWeight(today())">+ Mérés</button></div>
     <div class="grid3" style="margin-top:10px"><div class="stat"><div class="v">${r1(cur)}</div><div class="l">7 napos átlag</div></div>
     <div class="stat"><div class="v ${gained>=0?"ok":"bad"}">${gained>=0?"+":""}${r1(gained)}</div><div class="l">kg a kezdés óta</div></div>
@@ -412,12 +575,12 @@ function settings(){
   <label>Aktivitás</label><select id="sAc">${[[1.5,"Edzés + ülőmunka/iskola"],[1.6,"Napi edzés + átlagos mozgás"],[1.75,"Napi edzés + fizikai munka / sok séta"],[1.9,"Nagyon aktív"]].map(([v,l])=>`<option value="${v}" ${p.activity==v?"selected":""}>${l}</option>`).join("")}</select>
   <label>Gyarapodási tempó</label><select id="sR">${[[0.25,"Lassú, minimális zsír (0,25%/hét)"],[0.35,"Közepes (0,35%/hét)"],[0.5,"Gyors, kezdőknek (0,5%/hét)"]].map(([v,l])=>`<option value="${v}" ${p.rate==v?"selected":""}>${l}</option>`).join("")}</select>
   <div class="row" style="margin-top:14px"><button class="btn" id="sOk">Mentés</button><button class="btn g" onclick="closeModal()">Mégse</button></div>
-  <h3>Biztonsági mentés</h3><div class="sm mut">Az adatok csak ezen a telefonon vannak. Néha ments le egy fájlt, hogy telefoncserénél se vesszen el semmi.</div>
+  <h3>Biztonsági mentés</h3><div class="sm mut">Az adatok csak ezen a telefonon vannak. Néha ments le egy fájlt (a fotókkal együtt), hogy telefoncserénél se vesszen el semmi.</div>
   <div class="row" style="margin-top:8px"><button class="btn g" onclick="exportData()">⬇️ Mentés fájlba</button><label class="btn g" style="text-align:center;margin:0;color:var(--tx);font-size:15px">⬆️ Visszatöltés<input type="file" accept=".json" style="display:none" onchange="importData(this.files[0])"></label></div>`);
   $("#sOk").onclick=()=>{ p.name=$("#sN").value.trim()||"Bálint"; p.age=num($("#sA").value)||p.age; p.height=num($("#sH").value)||p.height; p.startWeight=num($("#sW").value)||p.startWeight; p.goalWeight=num($("#sG").value)||p.goalWeight; p.kcalAdjust=num($("#sK").value)||0; p.activity=num($("#sAc").value); p.rate=num($("#sR").value); save(); closeModal(); render(); toast(`Napi cél: ${targets().kcal} kcal`); };
 }
-function exportData(){ const b=new Blob([JSON.stringify(S,null,1)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`tomegeles-mentes-${today()}.json`; a.click(); }
-function importData(f){ if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.profile) throw 0; S=merge(structuredClone(DEFAULT),d); save(); closeModal(); render(); toast("Visszatöltve ✅"); }catch(e){ toast("Hibás fájl"); } }; r.readAsText(f); }
+async function exportData(){ const out=structuredClone(S); out.photoData={}; for(const d of S.photos){ try{ out.photoData[d]=await pGet(d); }catch(e){} } const b=new Blob([JSON.stringify(out)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=`tomegeles-mentes-${today()}.json`; a.click(); }
+function importData(f){ if(!f) return; const r=new FileReader(); r.onload=async()=>{ try{ const d=JSON.parse(r.result); if(!d.profile) throw 0; const pd=d.photoData||{}; delete d.photoData; for(const k in pd){ if(pd[k]){ await pPut(k,pd[k]); photoCache[k]=pd[k]; } } S=merge(structuredClone(DEFAULT),d); save(); closeModal(); render(); toast("Visszatöltve ✅"); }catch(e){ toast("Hibás fájl"); } }; r.readAsText(f); }
 function modal(h){ $("#modal").innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="sheet">${h}</div></div>`; }
 function closeModal(){ $("#modal").innerHTML=""; }
 
